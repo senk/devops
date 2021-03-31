@@ -2,37 +2,37 @@
 class AviCredentials {
   [string]
   $Controller
-  
+
   [string]
   $Username
-  
+
   [string]
   $Password
-  
+
   [string]
   $ApiVersion
-  
+
   [string]
   $Tenant
-  
+
   [string]
   $TenantUUID
-  
+
   [string]
   $Token
-  
+
   [Int32]
   $Port
-  
+
   [bool]
   $Secure
-  
+
   [string]
   $SessionID
-  
+
   [string]
   $CSRFToken
-  
+
   [Int32]
   $Timeout
 
@@ -56,13 +56,13 @@ class AviCredentials {
 class AviSession {
   [AviCredentials]
   $Credentials
-  
+
   [string]
   $Prefix
-  
+
   [System.Object]
   $WebSession
-  
+
   [System.DateTime]
   $LastUsed
 
@@ -73,7 +73,9 @@ class AviSession {
   $AuthResponse
 }
 
-<# 
+$AviSdkSkipWarnings=@{}
+
+<#
   .Synopsis
   Initialize an API session to an Avi Vantage controller.
 
@@ -131,7 +133,7 @@ class AviSession {
   .Outputs
   AviSession object for use in other SDK functions.
 
-  .Example  
+  .Example
   New-AviSession -Controller 1.2.3.4 -Username admin -Password avi123 -APIVersion 16.2.3
 
   .Example
@@ -145,35 +147,35 @@ function New-AviSession {
     [Parameter(Mandatory=$True, Position=1)]
     [string]
     $Controller,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [string]
     $Username,
-    
+
     [Parameter(Mandatory=$True, Position=3)]
     [string]
     $Password,
-    
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Port,
-    
+
     [Parameter(Mandatory=$False)]
     [bool]
     $Secure=$True,
-    
+
     [Parameter(Mandatory=$False)]
     [string]
     $ApiVersion="16.4.4",
-    
+
     [Parameter(Mandatory=$False)]
     [string]
     $Tenant="admin",
-    
+
     [Parameter(Mandatory=$False)]
     [string]
     $TenantUUID,
-    
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Timeout=30,
@@ -250,7 +252,7 @@ function New-AviSession {
   return $AviSession
 }
 
-<# 
+<#
   .Synopsis
   [PRIVATE] Initializes or re-initializes an API session to an Avi Vantage controller.
 
@@ -258,18 +260,18 @@ function New-AviSession {
   Initializes or re-initializes an API session to an Avi Vantage controller or controller cluster.
 
   .Parameter AviSession
-  An AviSession object obtained from calling New-AviSession.    
+  An AviSession object obtained from calling New-AviSession.
 #>
 function Initialize-AviSession {
   param(
     [AviSession]
     $AviSession
   )
-  
+
   $AuthJson = (@{username=$AviSession.Credentials.Username; password=$AviSession.Credentials.Password} | ConvertTo-Json -Compress)
 
   $Headers = Get-AviApiHeaders -AviSession $AviSession
-  
+
   $Retries = $AviSession.Credentials.RetryCount
 
   $LoginUrl = ($AviSession.Prefix + "/login")
@@ -278,7 +280,7 @@ function Initialize-AviSession {
     try {
       Write-Verbose "Starting controller login $($LoginUrl)"
 
-      $AuthResponse = Invoke-RestMethod -Uri $LoginUrl -Method POST -Body $AuthJson -ContentType "application/json" -SessionVariable WebSession -Headers $Headers -TimeoutSec $AviSession.Credentials.Timeout -Proxy $AviSession.Credentials.Proxy -ProxyCredential $AviSession.Credentials.ProxyCredential -ProxyUseDefaultCredentials:($AviSession.Credentials.ProxyUseDefaultCredentials)
+      $AuthResponse = Invoke-RestMethod @AviSdkSkipWarnings -Uri $LoginUrl -Method POST -Body $AuthJson -ContentType "application/json" -SessionVariable WebSession -Headers $Headers -TimeoutSec $AviSession.Credentials.Timeout -Proxy $AviSession.Credentials.Proxy -ProxyCredential $AviSession.Credentials.ProxyCredential -ProxyUseDefaultCredentials:($AviSession.Credentials.ProxyUseDefaultCredentials)
       break
     }
     catch [System.Net.WebException] {
@@ -339,7 +341,7 @@ function Initialize-AviSession {
   Write-Verbose "CSRF Token=$($AviSession.Credentials.CSRFToken)"
 }
 
-<# 
+<#
   .Synopsis
   [PRIVATE] Populates HTTP Headers for the session.
 
@@ -348,7 +350,7 @@ function Initialize-AviSession {
 
   .Parameter AviSession
   An AviSession object obtained from calling New-AviSession.
-  
+
   .Parameter Tenant
   Override the default tenant for the API call.
 
@@ -405,7 +407,7 @@ function Get-AviApiHeaders {
   return $Headers
 }
 
-<# 
+<#
   .Synopsis
   Invokes a REST method.
 
@@ -417,7 +419,7 @@ function Get-AviApiHeaders {
 
   .Parameter Method
   The REST method to invoke (e.g. GET, PUT, POST, PATCH, DELETE).
-  
+
   .Parameter Url
   The REST URL (can be fully-qualifed or just the API path).
 
@@ -442,7 +444,7 @@ function Get-AviApiHeaders {
   .Outputs
   Result from invoking the specified REST API.
 
-  .Example  
+  .Example
   Invoke-AviRestMethod -AviSession $Session -Method GET -Url /virtualservice
 
   .Example
@@ -452,16 +454,16 @@ function Invoke-AviRestMethod {
   param(
     [AviSession]
     $AviSession,
-    
+
     [Microsoft.PowerShell.Commands.WebRequestMethod]
     $Method,
-    
+
     [string]
     $Url,
-    
+
     [System.Object]
     $Body,
-    
+
     [Int32]
     $Timeout,
 
@@ -470,7 +472,7 @@ function Invoke-AviRestMethod {
 
     [string]
     $TenantUUID,
-    
+
     [string]
     $ApiVersion
   )
@@ -496,7 +498,7 @@ function Invoke-AviRestMethod {
       $JsonBody = $Body | ConvertTo-Json -Depth 100 -Compress
     }
   }
-  
+
   while ($Retries -ge 0) {
     if ($ReauthenticationCount -eq 1) {
       #First attempt at invocation failed due to authentiction error or
@@ -507,7 +509,7 @@ function Invoke-AviRestMethod {
       $ReauthenticationCount = 2
     }
     try {
-      $Response = Invoke-RestMethod -uri $FullUrl -Method $Method -WebSession $AviSession.WebSession -Headers $Headers -Body $JsonBody -ContentType "application/json" -TimeoutSec $Timeout -Proxy $AviSession.Credentials.Proxy -ProxyCredential $AviSession.Credentials.ProxyCredential -ProxyUseDefaultCredentials:($AviSession.Credentials.ProxyUseDefaultCredentials)
+      $Response = Invoke-RestMethod @AviSdkSkipWarnings -uri $FullUrl -Method $Method -WebSession $AviSession.WebSession -Headers $Headers -Body $JsonBody -ContentType "application/json" -TimeoutSec $Timeout -Proxy $AviSession.Credentials.Proxy -ProxyCredential $AviSession.Credentials.ProxyCredential -ProxyUseDefaultCredentials:($AviSession.Credentials.ProxyUseDefaultCredentials)
       #Received a valid response so break out of the retry loop
       break
     }
@@ -606,7 +608,7 @@ function Invoke-AviRestMethod {
   return $Response
 }
 
-<# 
+<#
   .Synopsis
   [PRIVATE] Extracts the API URL part.
 
@@ -629,7 +631,7 @@ function Get-AviQualifiedUrl {
   return $Url
 }
 
-<# 
+<#
   .Synopsis
   [PRIVATE] Converts a PS HashTable to a URI query string.
 
@@ -656,7 +658,7 @@ function Get-AviQueryParams {
   }
 }
 
-<# 
+<#
   .Synopsis
   Retrieves an object or collection of objects from the Avi controller.
 
@@ -701,11 +703,11 @@ function Get-AviObjectsByType {
     [Parameter(Mandatory=$True, Position=1)]
     [AviSession]
     $AviSession,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [string]
     $ObjectType,
-    
+
     [Parameter(Mandatory=$False)]
     [System.Object]
     $QueryParams,
@@ -742,7 +744,7 @@ function Get-AviObjectsByType {
   }
 }
 
-<# 
+<#
   .Synopsis
   Retrieves an object by URL.
 
@@ -757,7 +759,7 @@ function Get-AviObjectsByType {
 
   .Parameter QueryParams
   A HashTable of query parameters.
-  
+
   .Parameter Timeout
   Override the default timeout for the API call.
 
@@ -766,7 +768,7 @@ function Get-AviObjectsByType {
 
   .Parameter TenantUUID
   Override the default tenantUUID for the API call.
-  
+
   .Parameter ApiVersion
   Override the default Api Version for the API call.
 
@@ -797,7 +799,7 @@ function Get-AviObject {
     [Parameter(Mandatory=$True, Position=1)]
     [AviSession]
     $AviSession,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [string]
     $Url,
@@ -805,7 +807,7 @@ function Get-AviObject {
     [Parameter(Mandatory=$False)]
     [System.Object]
     $QueryParams,
-    
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Timeout,
@@ -836,7 +838,7 @@ function Get-AviObject {
   return $Response
 }
 
-<# 
+<#
   .Synopsis
   Retrieves an object by name.
 
@@ -897,15 +899,15 @@ function Get-AviObject {
 function Get-AviObjectByName {
   [CmdletBinding()]
   param(
-    
+
     [Parameter(Mandatory=$True, Position=1)]
     [AviSession]
     $AviSession,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [string]
     $ObjectType,
-    
+
     [Parameter(Mandatory=$True, Position=3)]
     [string]
     $Name,
@@ -913,7 +915,7 @@ function Get-AviObjectByName {
     [Parameter(Mandatory=$False)]
     [System.Object]
     $QueryParams,
-    
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Timeout=0,
@@ -929,7 +931,7 @@ function Get-AviObjectByName {
     [Parameter(Mandatory=$False)]
     [switch]
     $AllMatches,
-    
+
     [Parameter(Mandatory=$False)]
     [switch]
     $ReturnUUID,
@@ -952,7 +954,7 @@ function Get-AviObjectByName {
     }
     $Url += ("&" + (Get-AviQueryParams $QueryParams))
   }
-  
+
   $Response = Invoke-AviRestMethod -AviSession $AviSession -Url $Url -Method GET -Timeout $Timeout -Tenant $Tenant -TenantUUID $TenantUUID -ApiVersion $ApiVersion
 
   if ($Response) {
@@ -973,7 +975,7 @@ function Get-AviObjectByName {
   }
 }
 
-<# 
+<#
   .Synopsis
   Deletes an object (REST DELETE).
 
@@ -1020,7 +1022,7 @@ function Remove-AviObject {
     [Parameter(Mandatory=$True, Position=1)]
     [AviSession]
     $AviSession,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [string]
     $Url,
@@ -1028,7 +1030,7 @@ function Remove-AviObject {
     [Parameter(Mandatory=$False)]
     [System.Object]
     $ObjectData,
-    
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Timeout,
@@ -1047,11 +1049,11 @@ function Remove-AviObject {
   )
 
   $Response = Invoke-AviRestMethod -AviSession $AviSession -Url $Url -Method DELETE -Body $ObjectData -Timeout $Timeout -Tenant $Tenant -TenantUUID $TenantUUID -ApiVersion $ApiVersion
-  
+
   return $Response
 }
 
-<# 
+<#
   .Synopsis
   Update an existing object (REST PUT).
 
@@ -1066,7 +1068,7 @@ function Remove-AviObject {
 
   .Parameter Timeout
   Override the default timeout for the API call.
- 
+
   .Parameter Tenant
   Override the default tenant for the API call.
 
@@ -1093,7 +1095,7 @@ function Set-AviObject {
     [Parameter(Mandatory=$True, Position=1)]
     [AviSession]
     $AviSession,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [System.Object]
     $Object,
@@ -1105,7 +1107,7 @@ function Set-AviObject {
     [Parameter(Mandatory=$False)]
     [System.Object]
     $QueryParams,
-        
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Timeout=0,
@@ -1138,7 +1140,7 @@ function Set-AviObject {
   return $Response
 }
 
-<# 
+<#
   .Synopsis
   Create a new object (REST POST).
 
@@ -1159,7 +1161,7 @@ function Set-AviObject {
 
   .Parameter Timeout
   Override the default timeout for the API call.
- 
+
   .Parameter Tenant
   Override the default tenant for the API call.
 
@@ -1186,7 +1188,7 @@ function New-AviObject {
     [Parameter(Mandatory=$True, Position=1)]
     [AviSession]
     $AviSession,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [string]
     $ObjectType,
@@ -1198,7 +1200,7 @@ function New-AviObject {
     [Parameter(Mandatory=$False)]
     [System.Object]
     $QueryParams,
-        
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Timeout=0,
@@ -1227,7 +1229,7 @@ function New-AviObject {
   return $Response
 }
 
-<# 
+<#
   .Synopsis
   Edits an existing object (REST PATCH).
 
@@ -1248,7 +1250,7 @@ function New-AviObject {
 
   .Parameter Timeout
   Override the default timeout for the API call.
- 
+
   .Parameter Tenant
   Override the default tenant for the API call.
 
@@ -1273,7 +1275,7 @@ function Edit-AviObject {
     [Parameter(Mandatory=$True, Position=1)]
     [AviSession]
     $AviSession,
-    
+
     [Parameter(Mandatory=$True, Position=2)]
     [string]
     $Url,
@@ -1289,7 +1291,7 @@ function Edit-AviObject {
     [Parameter(Mandatory=$False)]
     [System.Object]
     $QueryParams,
-        
+
     [Parameter(Mandatory=$False)]
     [Int32]
     $Timeout=0,
@@ -1319,18 +1321,18 @@ function Edit-AviObject {
     $ObjectData = (@{$PatchOperation=$ObjectData})
     Write-Host ($ObjectData | ConvertTo-Json)
   }
-  
+
   $Response = Invoke-AviRestMethod -AviSession $AviSession -Url $Url -Method PATCH -Body $ObjectData -Timeout $Timeout -Tenant $Tenant -TenantUUID $TenantUUID -ApiVersion $ApiVersion
 
   return $Response
 }
 
-<# 
+<#
   .Synopsis
   Suppresses certificate warnings.
 
   .Description
-  Suppresses certificate warnings, for example due to self-signed certificates. 
+  Suppresses certificate warnings, for example due to self-signed certificates.
 
   .Example
   Disable-AviCertificateWarnings
@@ -1338,6 +1340,13 @@ function Edit-AviObject {
 function Disable-AviCertificateWarnings {
   [CmdletBinding()]
   param()
-  [System.Net.ServicePointManager]::ServerCertificateValidationCallback={$True}
+  $InvokeRestMethodCmdlet=Get-Command Invoke-RestMethod
+  if ($InvokeRestMethodCmdlet.Parameters.ContainsKey("SkipCertificateCheck")) {
+    $script:AviSdkSkipWarnings=@{
+      SkipCertificateCheck=$true
+    }
+  } else {
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback={$True}
+  }
   Write-Verbose "Certificate errors will be ignored"
 }
